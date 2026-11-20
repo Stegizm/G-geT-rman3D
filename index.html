@@ -42,6 +42,7 @@ input[type=text]{font-size:18px;padding:11px;border-radius:12px;border:0;width:1
 <div id="pmain"><button id="resume">Devam Et</button><button id="setb">Ayarlar</button><button id="quit">Ana Menü</button></div>
 <div id="pset" style="display:none"><label>Fare hassasiyeti: <span id="sv">3</span><input type="range" id="sens" min="1" max="10" step=".5" value="3"></label><label>Görüş açısı (FOV): <span id="fv">55°</span><input type="range" id="fov" min="50" max="110" value="55"></label><button id="back">Geri</button></div></div>
 <div id="msg"></div>
+<script src="peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),wrap=$('wrap');
@@ -165,7 +166,33 @@ function drawMenu(dt){ma+=dt*.12;const Rr=17,T=performance.now()/1000;
  headG.rotation.set(-.25,Math.sin(T*.8)*.5,0)}
 // çok oyunculu (room)
 let ROOM=null,rm=null,unsub=null,host=false,code='',myName='',myCol=0,inLobby=false;
-if(window.claude&&window.claude.use)window.claude.use('room').then(r=>{ROOM=r;if(!r)$('mnote').textContent='Çoklu oyun bu görünümde kapalı.'}).catch(()=>{});else $('mnote').textContent='Çoklu oyun bu görünümde kapalı.';
+// PeerJS tabanlı oda sistemi (Claude dışında, örn. Vercel'de): oda sahibi merkez, diğerleri ona bağlanır
+const peerRoom={join(name,isHost){return new Promise((resolve,reject)=>{
+ const my={},table=new Map(),conns=new Map();let subs=[],myId='',hc=null,last=new Set(),dirty=false,iv=null,done=false;
+ const peer=isHost?new Peer('tkgame-'+name):new Peer();
+ const fail=e=>{if(done)return;done=true;clearInterval(iv);try{peer.destroy()}catch(_){}reject(e)};
+ const emit=snap=>{const ids=Object.keys(snap);const peers=ids.map(id=>({peer:id,isMe:id===myId,presence:snap[id]||{}}));const left=[...last].filter(id=>!(id in snap)).map(id=>({peer:id,isMe:false,presence:{}}));last=new Set(ids);subs.forEach(f=>f({peers,left,joined:[],updated:[]}))};
+ const room={
+  presence(p){Object.assign(my,p);dirty=true;return Promise.resolve()},
+  onPeers(f){subs.push(f);return()=>{subs=subs.filter(x=>x!==f)}},
+  leave(){clearInterval(iv);try{peer.destroy()}catch(_){}subs=[];return Promise.resolve()}};
+ peer.on('error',e=>{if(!done)fail(e)});
+ setTimeout(()=>{if(!done)fail(new Error('timeout'))},9000);
+ if(isHost){
+  peer.on('open',id=>{myId=id;done=true;resolve(room);
+   iv=setInterval(()=>{if(dirty){table.set(myId,{...my});dirty=false}const snap=Object.fromEntries(table);emit(snap);const m={t:'s',s:snap};conns.forEach(c=>{if(c.open)c.send(m)})},100)});
+  peer.on('connection',c=>{c.on('open',()=>conns.set(c.peer,c));
+   c.on('data',m=>{if(m&&m.t==='p'&&m.d&&typeof m.d==='object')table.set(c.peer,m.d)});
+   c.on('close',()=>{conns.delete(c.peer);table.delete(c.peer)})})
+ }else{
+  peer.on('open',id=>{myId=id;hc=peer.connect('tkgame-'+name,{serialization:'json'});
+   hc.on('open',()=>{done=true;resolve(room);iv=setInterval(()=>{if(dirty&&hc.open){hc.send({t:'p',d:my});dirty=false}},70)});
+   hc.on('data',m=>{if(m&&m.t==='s'&&m.s)emit(m.s)});
+   hc.on('close',()=>{clearInterval(iv);emit({[myId]:{...my}})})})
+ }
+})}};
+const usePeer=()=>{ROOM=window.Peer?peerRoom:null;if(!ROOM)$('mnote').textContent='Çoklu oyun kapalı.'};
+if(window.claude&&window.claude.use)window.claude.use('room').then(r=>{if(r)ROOM=r;else usePeer()}).catch(usePeer);else usePeer();
 const COL=[0xff6b6b,0x5aa9ff,0xffd23f,0xc77dff,0xff9f43,0x2ee6d6],rem=new Map(),N=v=>+v||0;
 function label(s){const c=document.createElement('canvas');c.width=256;c.height=64;const g=c.getContext('2d');g.font='bold 34px sans-serif';g.textAlign='center';g.lineWidth=6;g.strokeStyle='#000';g.fillStyle='#fff';g.strokeText(s,128,44);g.fillText(s,128,44);
  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));sp.scale.set(2,.5,1);sp.position.y=1.9;sp.renderOrder=9;return sp}
@@ -188,7 +215,7 @@ function onPeers(ch){
 async function joinRoom(c,isHost){
  if(!ROOM){$('mnote').textContent='Çoklu oyun bu görünümde kapalı. Arkadaşlarının sayfayı paylaşım bağlantısıyla açması gerekir.';return}
  $('mnote').textContent='Bağlanılıyor...';
- try{rm=await ROOM.join('tk-'+c)}catch(e){$('mnote').textContent='Odaya girilemedi.';return}
+ try{rm=await ROOM.join('tk-'+c,isHost)}catch(e){$('mnote').textContent='Oda bulunamadı ya da bağlanılamadı.';return}
  code=c;host=isHost;myName=($('nick').value.trim()||'Oyuncu'+(100+Math.floor(Math.random()*900))).slice(0,14);myCol=Math.floor(Math.random()*6);
  lx=(Math.random()-.5)*4;lz=(Math.random()-.5)*3+1.5;inLobby=true;
  rm.presence({n:myName,c:myCol,host:host?1:0,st:0,x:lx,y:0,z:lz,r:0,h:0,m:0}).catch(()=>{});
