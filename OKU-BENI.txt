@@ -1,10 +1,8 @@
-Goge Tirman 3D
-==============
-index.html  -> Guncel oyun (ana menu, parkur, tutunma, kosma, oda sistemi). Tarayicida cift tiklayip ac.
-eski-surumler/ -> Onceki denemeler (2D yan gorunum, 3D yan gorunum, tam 3D, gokyuzu parkuru).
-
-Notlar:
-- Oyun three.js'i internetten (cdnjs, r128) yukler, ilk acilista internet gerekir.
-- Kontroller: WASD yuru, Shift kos, Bosluk zipla, Fare bakis, Kenara tutunca Bosluk cik / S birak, Esc menu.
-- Oda (cok oyunculu) sistemi sadece Claude'daki yayinlanmis sayfada calisir; kendi bilgisayarinda acinca
-  "Cok oyunculu bu gorunumde kapali" yazar, tek basina oynayabilirsin.
+Goge Tirman 3D - Vercel surumu
+==============================
+Dosyalar: index.html + peerjs.min.js (ikisi ayni klasorde, Vercel'e ikisini birden yukle).
+Coklu oyun PeerJS (WebRTC) ile calisir: sunucu kurmana gerek yok.
+- Oda kuran kisi oda sahibidir, oyun boyunca sayfasi acik kalmali.
+- Arkadaslar kodu girip katilir. Herkes ayni siteyi (ayni Vercel linki) acmali.
+- Bazi okul/is aglarinda WebRTC engellenebilir; o durumda mobil veri ile dene.
+Kontroller: WASD yuru, Shift kos, Bosluk zipla, Fare bakis, Esc menu, kenara tutunca Bosluk cik / S birak.
