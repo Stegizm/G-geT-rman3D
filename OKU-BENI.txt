@@ -1,0 +1,10 @@
+Goge Tirman 3D
+==============
+index.html  -> Guncel oyun (ana menu, parkur, tutunma, kosma, oda sistemi). Tarayicida cift tiklayip ac.
+eski-surumler/ -> Onceki denemeler (2D yan gorunum, 3D yan gorunum, tam 3D, gokyuzu parkuru).
+
+Notlar:
+- Oyun three.js'i internetten (cdnjs, r128) yukler, ilk acilista internet gerekir.
+- Kontroller: WASD yuru, Shift kos, Bosluk zipla, Fare bakis, Kenara tutunca Bosluk cik / S birak, Esc menu.
+- Oda (cok oyunculu) sistemi sadece Claude'daki yayinlanmis sayfada calisir; kendi bilgisayarinda acinca
+  "Cok oyunculu bu gorunumde kapali" yazar, tek basina oynayabilirsin.
